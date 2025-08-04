@@ -3,8 +3,13 @@ import topLevelAwait from "vite-plugin-top-level-await";
 
 export default defineConfig({
   server: {
+    host: "0.0.0.0",
     port: 4600,
     open: "building/index.html",
+    watch: {
+      usePolling: true,        // force polling so Docker detects host changes
+      interval: 100            // optional: polling frequency (ms)
+    }
   },
   base: "./", // to resolve assets
   root: "./src",
@@ -28,6 +33,7 @@ export default defineConfig({
         "slab-designer": "src/slab-designer/index.html",
         "color-map": "src/color-map/index.html",
         "plate-ortho": "src/plate-ortho/index.html",
+        myexample: "src/myexample/index.html",
       },
     },
   },

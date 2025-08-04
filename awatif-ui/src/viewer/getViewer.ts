@@ -21,6 +21,7 @@ import { frameResults } from "./objects/frameResults";
 import { nodeResults } from "./objects/nodeResults";
 import { drawing, Drawing } from "./drawing/drawing";
 import { shellResults } from "./objects/shellResults";
+import { structuralPoints } from "./objects/structuralPoints";
 
 import "./styles.css";
 import { getLegend } from "../color-map/getLegend";
@@ -123,6 +124,7 @@ export function getViewer({
     settings.nodeResults.val;
     settings.frameResults.val;
     settings.shellResults.val;
+    settings.structuralPoints?.val;
 
     setTimeout(viewerRender); // setTimeout to ensure render is called after all updates are done in that event tick
   });
@@ -134,6 +136,11 @@ export function getViewer({
 
   // Optional inputs
   if (mesh) {
+    // Use drawingObj.points as source of structural points
+    const derivedStructuralPoints = drawingObj
+      ? van.derive(() => drawingObj.points.val ?? [])
+      : van.state([]);
+
     // 3D objects
     scene.add(
       nodes(settings, derivedNodes, derivedDisplayScale),
@@ -144,7 +151,8 @@ export function getViewer({
       loads(mesh, settings, derivedNodes, derivedDisplayScale),
       orientations(mesh, settings, derivedNodes, derivedDisplayScale),
       nodeResults(mesh, settings, derivedNodes, derivedDisplayScale),
-      frameResults(mesh, settings, derivedNodes, derivedDisplayScale)
+      frameResults(mesh, settings, derivedNodes, derivedDisplayScale),
+      structuralPoints(settings, derivedStructuralPoints, derivedDisplayScale)
     );
 
     // Color map

@@ -21,6 +21,7 @@ export type Settings = {
   shellResults: State<string>;
   solids: State<boolean>;
   flipAxes: State<boolean>;
+  structuralPoints: State<boolean>;
 };
 
 export type SettingsObj = {
@@ -39,6 +40,7 @@ export type SettingsObj = {
   shellResults?: string;
   flipAxes?: boolean;
   solids?: boolean;
+  structuralPoints?: boolean;
 };
 
 export function getSettings(
@@ -76,6 +78,9 @@ export function getSettings(
     });
     pane.addBinding(settings.orientations, "val", {
       label: "Orientations",
+    });
+    pane.addBinding(settings.structuralPoints, "val", {
+      label: "Structural points",
     });
   }
 
@@ -151,5 +156,6 @@ export function getDefaultSettings(settingsObj: SettingsObj): Settings {
     shellResults: van.state(settingsObj?.shellResults ?? "none"),
     flipAxes: van.state(settingsObj?.flipAxes ?? false),
     solids: van.state(settingsObj?.solids ?? true),
+    structuralPoints: van.state(settingsObj?.structuralPoints ?? true),
   };
 }

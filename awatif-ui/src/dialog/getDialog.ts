@@ -1,13 +1,17 @@
 import van, { State } from "vanjs-core";
 import { html, render } from "lit-html";
 import { createRef, ref } from "lit-html/directives/ref.js";
+import { styleMap } from "lit-html/directives/style-map.js";
+
 
 import "./styles.css";
 
 export function getDialog({
   dialogBody,
+  dialogStyle = {},
 }: {
   dialogBody: State<HTMLElement | undefined>;
+  dialogStyle?: Partial<CSSStyleDeclaration>;
 }): HTMLElement {
   // Init
   const element = document.createElement("div");
@@ -16,7 +20,7 @@ export function getDialog({
 
   function template() {
     return html`
-      <dialog ref=${ref(dialogElm)}>
+      <dialog ref=${ref(dialogElm)} style=${styleMap(dialogStyle)}>
         <div class="dialog-header">
           <span class="close" @click=${onClose}>&times;</span>
         </div>
@@ -55,7 +59,7 @@ export function getDialog({
   return element;
 }
 
-// Utils
+// Utils: resize interactively from mouse events
 function addResizeListeners(dialog: HTMLDialogElement | null) {
   if (!dialog) return;
 
