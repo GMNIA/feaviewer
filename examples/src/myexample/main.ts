@@ -2,6 +2,7 @@ import van, { State } from "vanjs-core";
 import * as THREE from "three";
 import { getViewer, getTables, getToolbar, getDialog, Drawing } from "awatif-ui";
 import "./styles.css";
+import { getMesh } from "awatif-mesh";
 
 // Init
 const allPoints = van.state([
@@ -9,11 +10,24 @@ const allPoints = van.state([
   [5, 0, 5],
   [10, 0, 0],
   [15, 0, 0],
+  [0, 5, 0],
+  [5, 5, 0],
+  [5, 10, 0],
+  [0, 10, 0],
+  [6.5, 12, 0],
+  [2.5, 14.5, 0],
+  [10, 5, 0],
+  [15, 5, 0],
+  [15, 10, 0],
+  [10, 10, 0],
+  [12, 12, 0],
 ]);
 const elementConnectivity = van.state([
   [1, 2],
   [2, 3],
   [3, 4],
+  [13, 15],
+  [14, 15],
 ]);
 const division = 5;
 const elements: State<Element[]> = van.state([]);
@@ -57,14 +71,30 @@ tables.set("members", {
   data: elementConnectivity,
 });
 
-// Beam meshing
+const surfacePolygon = van.state([[5, 6, 7, 9, 10, 8], [11, 12, 13, 14]]);
+tables.set("surface", {
+  text: "Surface",
+  fields: [
+    { field: "A", text: "Point 1", editable: { type: "int" } },
+    { field: "B", text: "Point 2", editable: { type: "int" } },
+    { field: "C", text: "Point 3", editable: { type: "int" } },
+    { field: "D", text: "Point 4", editable: { type: "int" } },
+    { field: "E", text: "Point 5", editable: { type: "int" } },
+    { field: "F", text: "Point 6", editable: { type: "int" } },
+  ],
+  data: surfacePolygon,
+});
+
+
 van.derive(() => {
   const points = allPoints.val;
   const connectivity = elementConnectivity.val;
+  const polygon = surfacePolygon.val.at(0) ?? [];
 
-  const newNodes: Node[] = [];
-  const newElements: Element[] = [];
+  const beamNodes: Node[] = [];
+  const beamElements: Element[] = [];
 
+  // --- 1. Beam Meshing ---
   for (const [startId, endId] of connectivity) {
     const start = points[startId - 1];
     const end = points[endId - 1];
@@ -79,16 +109,39 @@ van.derive(() => {
       ] as Node;
     });
 
-    const baseId = newNodes.length;
-    newNodes.push(...segmentNodes);
-
+    const baseId = beamNodes.length;
+    beamNodes.push(...segmentNodes);
     for (let i = 0; i < division; i++) {
-      newElements.push([baseId + i, baseId + i + 1]);
+      beamElements.push([baseId + i, baseId + i + 1]);
     }
   }
 
-  meshedNodes.val = newNodes;
-  elements.val = newElements;
+// --- 2. Surface Meshing (loop over all polygons) ---
+let surfaceNodes: Node[] = [];
+let surfaceElements: Element[] = [];
+
+for (const polygon of surfacePolygon.val) {
+  const cleanIds = polygon.filter((id) => typeof id === "number" && !isNaN(id));
+  const indices = cleanIds.map((i) => i - 1); // 1-based to 0-based
+  const usedPoints: Node[] = indices.map((i) => points[i]).filter(Boolean);
+
+  if (usedPoints.length >= 3) {
+    const surfaceMesh = getMesh({
+      points: usedPoints,
+      polygon: [...Array(usedPoints.length).keys()],
+    });
+
+    const offset = beamNodes.length + surfaceNodes.length;
+    surfaceNodes.push(...surfaceMesh.nodes);
+    surfaceElements.push(
+      ...surfaceMesh.elements.map((el) => el.map((i) => i + offset) as Element)
+    );
+  }
+}
+
+  // --- 3. Combine ---
+  meshedNodes.val = [...beamNodes, ...surfaceNodes];
+  elements.val = [...beamElements, ...surfaceElements];
 });
 
 // Update red input points
