@@ -55,9 +55,9 @@ const tables = new Map();
 tables.set("points", {
   text: "Points",
   fields: [
-    { field: "A", text: "X-coordinate", min: "25", editable: { type: "float" } },
-    { field: "B", text: "Y-coordinate", editable: { type: "float" } },
-    { field: "C", text: "Z-coordinate", editable: { type: "float" } },
+    { field: "A", text: "X [m]", min: "25", editable: { type: "float" } },
+    { field: "B", text: "Y [m]", editable: { type: "float" } },
+    { field: "C", text: "Z [m]", editable: { type: "float" } },
   ],
   data: allPoints,
 });
@@ -65,8 +65,10 @@ tables.set("points", {
 tables.set("members", {
   text: "Members",
   fields: [
-    { field: "A", text: "startId", editable: { type: "int" } },
-    { field: "B", text: "endId", editable: { type: "int" } },
+    { field: "A", text: "start-Id", editable: { type: "int" } },
+    { field: "B", text: "end-Id", editable: { type: "int" } },
+    { field: "C", text: "Section-Id", editable: { type: "int" } },
+    { field: "D", text: "Material-Id", editable: { type: "int" } },
   ],
   data: elementConnectivity,
 });
@@ -75,12 +77,14 @@ const surfacePolygon = van.state([[5, 6, 7, 9, 10, 8], [11, 12, 13, 14]]);
 tables.set("surface", {
   text: "Surface",
   fields: [
-    { field: "A", text: "Point 1", editable: { type: "int" } },
-    { field: "B", text: "Point 2", editable: { type: "int" } },
-    { field: "C", text: "Point 3", editable: { type: "int" } },
-    { field: "D", text: "Point 4", editable: { type: "int" } },
-    { field: "E", text: "Point 5", editable: { type: "int" } },
-    { field: "F", text: "Point 6", editable: { type: "int" } },
+    { field: "A", text: "Point-1", editable: { type: "int" } },
+    { field: "B", text: "Point-2", editable: { type: "int" } },
+    { field: "C", text: "Point-3", editable: { type: "int" } },
+    { field: "D", text: "Point-4", editable: { type: "int" } },
+    { field: "E", text: "Point-5", editable: { type: "int" } },
+    { field: "F", text: "Point-6", editable: { type: "int" } },
+    { field: "G", text: "Thickness [m]", editable: { type: "int" } },
+    { field: "H", text: "Material-Id", editable: { type: "int" } },
   ],
   data: surfacePolygon,
 });
@@ -197,7 +201,7 @@ document.body.append(
   getDialog({
     dialogBody,
     dialogStyle: {
-      width: "500px",
+      width: "570px",
       height: "600px",
       top: "40px",
       left: "auto",

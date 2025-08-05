@@ -6,3 +6,11 @@
   left: 0;
   right: 0;
 }
+
+/* Add settings for headers and rows of the table for automatic line wrapping*/
+.w2ui-grid .w2ui-head div {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  line-height: 1.1;
+}

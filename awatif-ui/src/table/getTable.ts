@@ -21,7 +21,6 @@ export function getTable({
     name: Math.random().toString().substring(2),
     box: tableElm,
     selectType: "cell",
-    recordHeight: 26,
     show: { columnMenu: false, lineNumbers: true },
     columns: toColumns(fields),
     records: toRecords(data.rawVal, fields),
@@ -80,8 +79,8 @@ const FIELDS_INDEXES = "ABCDEFGHIJKLMNOPRST";
 function toColumns(fields: object[]): object[] {
   const columns = FIELDS_INDEXES.split("").map((fieldIndex) => ({
     field: fieldIndex,
-    text: '<div style="text-align: center">' + fieldIndex + "</div>",
-    size: "90px",
+    text: '<div style="white-space: normal; text-align: center">' + fieldIndex + '</div>',
+    size: "63px",
     resizable: true,
     sortable: true,
     editable: { type: "text" },
