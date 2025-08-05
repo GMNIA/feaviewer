@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import topLevelAwait from "vite-plugin-top-level-await";
+import path from "path";
 
 export default defineConfig({
   server: {
@@ -7,12 +8,17 @@ export default defineConfig({
     port: 4600,
     open: "building/index.html",
     watch: {
-      usePolling: true,        // force polling so Docker detects host changes
-      interval: 100            // optional: polling frequency (ms)
+      usePolling: true,
+      interval: 100
     }
   },
-  base: "./", // to resolve assets
+  base: "./",
   root: "./src",
+  resolve: {
+    alias: {
+      "awatif-ui": path.resolve(__dirname, "../awatif-ui/src"),
+    },
+  },
   build: {
     outDir: "../../website/src/examples",
     emptyOutDir: true,
