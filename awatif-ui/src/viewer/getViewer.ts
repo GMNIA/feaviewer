@@ -22,6 +22,7 @@ import { nodeResults } from "./objects/nodeResults";
 import { drawing, Drawing } from "./drawing/drawing";
 import { shellResults } from "./objects/shellResults";
 import { structuralPoints } from "./objects/structuralPoints";
+import { structuralPointsIndexes } from "./objects/structuralPointsIndexes";
 
 import "./styles.css";
 import { getLegend } from "../color-map/getLegend";
@@ -125,6 +126,7 @@ export function getViewer({
     settings.frameResults.val;
     settings.shellResults.val;
     settings.structuralPoints?.val;
+    settings.structuralPointsIndexes?.val;
 
     setTimeout(viewerRender); // setTimeout to ensure render is called after all updates are done in that event tick
   });
@@ -152,7 +154,8 @@ export function getViewer({
       orientations(mesh, settings, derivedNodes, derivedDisplayScale),
       nodeResults(mesh, settings, derivedNodes, derivedDisplayScale),
       frameResults(mesh, settings, derivedNodes, derivedDisplayScale),
-      structuralPoints(settings, derivedStructuralPoints, derivedDisplayScale)
+      structuralPoints(settings, derivedStructuralPoints, derivedDisplayScale),
+      structuralPointsIndexes(settings, derivedStructuralPoints, derivedDisplayScale)
     );
 
     // Color map

@@ -22,6 +22,7 @@ export type Settings = {
   solids: State<boolean>;
   flipAxes: State<boolean>;
   structuralPoints: State<boolean>;
+  structuralPointsIndexes: State<boolean>;
 };
 
 export type SettingsObj = {
@@ -41,6 +42,7 @@ export type SettingsObj = {
   flipAxes?: boolean;
   solids?: boolean;
   structuralPoints?: boolean;
+  structuralPointsIndexes?: boolean;
 };
 
 export function getSettings(
@@ -81,6 +83,9 @@ export function getSettings(
     });
     pane.addBinding(settings.structuralPoints, "val", {
       label: "Structural points",
+    });
+    pane.addBinding(settings.structuralPointsIndexes, "val", {
+      label: "Structural points indexes",
     });
   }
 
@@ -157,5 +162,6 @@ export function getDefaultSettings(settingsObj: SettingsObj): Settings {
     flipAxes: van.state(settingsObj?.flipAxes ?? false),
     solids: van.state(settingsObj?.solids ?? true),
     structuralPoints: van.state(settingsObj?.structuralPoints ?? true),
+    structuralPointsIndexes: van.state(settingsObj?.structuralPointsIndexes ?? false),
   };
 }
