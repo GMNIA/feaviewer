@@ -3,8 +3,18 @@ import * as THREE from "three";
 import { getViewer, getTables, getToolbar, getDialog, Drawing } from "awatif-ui";
 import "./styles.css";
 import { getMesh } from "awatif-mesh";
+import {
+  Node,
+  Element,
+  NodeInputs,
+  ElementInputs,
+  DeformOutputs,
+  AnalyzeOutputs,
+  deform,
+  analyze,
+} from "awatif-fem";
 
-// Init
+// --- Init ---
 const allPoints = van.state([
   [0, 0, 0],
   [5, 0, 5],
@@ -34,12 +44,17 @@ const elements: State<Element[]> = van.state([]);
 const meshedNodes: State<Node[]> = van.state([]);
 const drawingPoints: Drawing["points"] = allPoints;
 
+// FEM States
+const nodeInputsState: State<NodeInputs> = van.state({});
+const elementInputsState: State<ElementInputs> = van.state({});
+const deformOutputsState: State<DeformOutputs> = van.state({});
+const analyzeOutputsState: State<AnalyzeOutputs> = van.state({});
+
+// Geometry
 const lines = new THREE.Line(
   new THREE.BufferGeometry(),
   new THREE.LineBasicMaterial()
 );
-
-// Visual representation of input points (in red)
 const pointMaterial = new THREE.PointsMaterial({
   color: 0xff0000,
   size: 0.2,
@@ -48,7 +63,6 @@ const pointMaterial = new THREE.PointsMaterial({
 const pointGeometry = new THREE.BufferGeometry();
 const pointDots = new THREE.Points(pointGeometry, pointMaterial);
 const objects3D = van.state([lines, pointDots]);
-
 const tables = new Map();
 
 // Tables
@@ -61,7 +75,6 @@ tables.set("points", {
   ],
   data: allPoints,
 });
-
 tables.set("members", {
   text: "Members",
   fields: [
@@ -72,7 +85,6 @@ tables.set("members", {
   ],
   data: elementConnectivity,
 });
-
 const surfacePolygon = van.state([[5, 6, 7, 9, 10, 8], [11, 12, 13, 14]]);
 tables.set("surface", {
   text: "Surface",
@@ -89,16 +101,18 @@ tables.set("surface", {
   data: surfacePolygon,
 });
 
+// --- Mesh generation ---
+const structuralPointToNodeMap = van.state(new Map<number, number>());
 
 van.derive(() => {
   const points = allPoints.val;
   const connectivity = elementConnectivity.val;
-  const polygon = surfacePolygon.val.at(0) ?? [];
 
   const beamNodes: Node[] = [];
   const beamElements: Element[] = [];
+  const structuralToNodeMap = new Map<number, number>();
 
-  // --- 1. Beam Meshing ---
+  // --- Beam and Surface Meshing ---
   for (const [startId, endId] of connectivity) {
     const start = points[startId - 1];
     const end = points[endId - 1];
@@ -112,43 +126,95 @@ van.derive(() => {
         (1 - t) * start[2] + t * end[2],
       ] as Node;
     });
-
     const baseId = beamNodes.length;
+
+    // Map structural points to FEM node indices
+    // First node of segment corresponds to start structural point
+    structuralToNodeMap.set(startId - 1, baseId);
+    // Last node of segment corresponds to end structural point
+    structuralToNodeMap.set(endId - 1, baseId + division);
+    
     beamNodes.push(...segmentNodes);
     for (let i = 0; i < division; i++) {
       beamElements.push([baseId + i, baseId + i + 1]);
     }
   }
+  let surfaceNodes: Node[] = [];
+  let surfaceElements: Element[] = [];
+  for (const polygon of surfacePolygon.val) {
+    const cleanIds = polygon.filter((id) => typeof id === "number" && !isNaN(id));
+    const indices = cleanIds.map((i) => i - 1);
+    const usedPoints: Node[] = indices.map((i) => points[i]).filter(Boolean);
+    if (usedPoints.length >= 3) {
+      const surfaceMesh = getMesh({
+        points: usedPoints,
+        polygon: [...Array(usedPoints.length).keys()],
+      });
 
-// --- 2. Surface Meshing (loop over all polygons) ---
-let surfaceNodes: Node[] = [];
-let surfaceElements: Element[] = [];
-
-for (const polygon of surfacePolygon.val) {
-  const cleanIds = polygon.filter((id) => typeof id === "number" && !isNaN(id));
-  const indices = cleanIds.map((i) => i - 1); // 1-based to 0-based
-  const usedPoints: Node[] = indices.map((i) => points[i]).filter(Boolean);
-
-  if (usedPoints.length >= 3) {
-    const surfaceMesh = getMesh({
-      points: usedPoints,
-      polygon: [...Array(usedPoints.length).keys()],
-    });
-
-    const offset = beamNodes.length + surfaceNodes.length;
-    surfaceNodes.push(...surfaceMesh.nodes);
-    surfaceElements.push(
-      ...surfaceMesh.elements.map((el) => el.map((i) => i + offset) as Element)
-    );
+      const offset = beamNodes.length + surfaceNodes.length;
+      
+      // Map surface structural points to FEM node indices
+      for (let i = 0; i < usedPoints.length; i++) {
+        const originalPointIndex = indices[i];
+        structuralToNodeMap.set(originalPointIndex, offset + i);
+      }
+      
+      surfaceNodes.push(...surfaceMesh.nodes);
+      surfaceElements.push(
+        ...surfaceMesh.elements.map((el) => el.map((i) => i + offset) as Element)
+      );
+    }
   }
-}
 
-  // --- 3. Combine ---
+  // --- Combine ---
   meshedNodes.val = [...beamNodes, ...surfaceNodes];
   elements.val = [...beamElements, ...surfaceElements];
+  structuralPointToNodeMap.val = structuralToNodeMap;
 });
 
-// Update red input points
+// --- FEM calculation ---
+van.derive(() => {
+  const nodes = meshedNodes.val;
+  const elems = elements.val;
+  if (!nodes.length || !elems.length) return;
+
+  // Support condition: fully fixed (UX, UY, UZ, RX, RY, RZ)
+  const fixed: boolean[] = [true, true, true, true, true, true];
+
+  // Get mapping from structural points to FEM nodes
+  const structuralToNode = structuralPointToNodeMap.val;
+  
+  // Apply supports to ALL structural points that have corresponding FEM nodes
+  const supports = new Map<number, boolean[]>();
+  for (const [structuralPointIndex, femNodeIndex] of structuralToNode) {
+    supports.set(femNodeIndex, fixed);
+  }
+
+  // No loads for now
+  const loads = new Map<number, number[]>();
+
+  // Material properties for all elements
+  const elasticities = new Map(elems.map((_, i) => [i, 100]));
+  const areas = new Map(elems.map((_, i) => [i, 10]));
+
+  const nodeInputs: NodeInputs = { supports, loads };
+  const elementInputs: ElementInputs = { elasticities, areas };
+
+  // Skip FEM calculation for now - just create empty outputs
+  const deformOutputs: DeformOutputs = { displacements: new Map() };
+  const analyzeOutputs: AnalyzeOutputs = { 
+    forces: new Map(), 
+    reactions: new Map(),
+    stresses: new Map() 
+  };
+
+  nodeInputsState.val = nodeInputs;
+  elementInputsState.val = elementInputs;
+  deformOutputsState.val = deformOutputs;
+  analyzeOutputsState.val = analyzeOutputs;
+});
+
+// --- Update visuals ---
 van.derive(() => {
   const coords = allPoints.val;
   if (!coords.length) return;
@@ -212,14 +278,19 @@ document.body.append(
     mesh: {
       nodes: meshedNodes,
       elements: elements,
+      nodeInputs: nodeInputsState,
+      elementInputs: elementInputsState,
+      deformOutputs: deformOutputsState,
+      analyzeOutputs: analyzeOutputsState,
     },
     drawingObj: {
       points: drawingPoints,
     },
     settingsObj: {
       nodes: true,
-      loads: false,
-      deformedShape: false,
+      supports: true,
+      loads: true,
+      deformedShape: true,
       structuralPoints: true,
     },
     objects3D: objects3D,
