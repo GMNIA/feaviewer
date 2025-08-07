@@ -255,21 +255,36 @@ van.derive(() => {
 
   // No loads for now
   const loads = new Map<number, number[]>();
+  
+  // Add a sample load on a free node (point 1 which is structural point index 0, mapped to FEM node)
+  const sampleLoadNodeIndex = structuralToNode.get(1); // Point 1 (index 0) 
+  if (sampleLoadNodeIndex !== undefined) {
+    loads.set(sampleLoadNodeIndex, [0, 0, -100, 0, 0, 0]); // 100N downward load
+  }
 
-  // Material properties for all elements
-  const elasticities = new Map(elems.map((_, i) => [i, 100]));
-  const areas = new Map(elems.map((_, i) => [i, 10]));
+  // Material properties for all elements (following 3d-structure example)
+  const elasticities = new Map(elems.map((_, i) => [i, 200000])); // 200 GPa steel
+  const areas = new Map(elems.map((_, i) => [i, 0.01])); // 100 cm²
+  
+  // Additional properties for beam elements (following 1d-mesh example)
+  const shearModuli = new Map(elems.map((_, i) => [i, 80000])); // 80 GPa
+  const torsionalConstants = new Map(elems.map((_, i) => [i, 0.0001]));
+  const momentsOfInertiaY = new Map(elems.map((_, i) => [i, 0.0001]));
+  const momentsOfInertiaZ = new Map(elems.map((_, i) => [i, 0.0001]));
 
   const nodeInputs: NodeInputs = { supports, loads };
-  const elementInputs: ElementInputs = { elasticities, areas };
-
-  // Skip FEM calculation for now - just create empty outputs
-  const deformOutputs: DeformOutputs = { displacements: new Map() };
-  const analyzeOutputs: AnalyzeOutputs = { 
-    forces: new Map(), 
-    reactions: new Map(),
-    stresses: new Map() 
+  const elementInputs: ElementInputs = { 
+    elasticities, 
+    areas, 
+    shearModuli, 
+    torsionalConstants, 
+    momentsOfInertiaY, 
+    momentsOfInertiaZ 
   };
+
+  // Perform actual FEM calculation
+  const deformOutputs = deform(meshedNodes.val, elements.val, nodeInputs, elementInputs);
+  const analyzeOutputs = analyze(meshedNodes.val, elements.val, elementInputs, deformOutputs);
 
   nodeInputsState.val = nodeInputs;
   elementInputsState.val = elementInputs;
@@ -293,16 +308,8 @@ van.derive(() => {
 
 // Update mesh lines
 van.derive(() => {
-  const nodes = meshedNodes.val;
-  const beamElems = beamElements.val;
+  // Don't draw any lines - let the viewer handle all mesh rendering
   const lineSegments: number[] = [];
-
-  // Only draw beam elements as lines
-  for (const [startIdx, endIdx] of beamElems) {
-    const start = nodes[startIdx];
-    const end = nodes[endIdx];
-    if (start && end) lineSegments.push(...start, ...end);
-  }
 
   lines.geometry.setAttribute(
     "position",
