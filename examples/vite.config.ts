@@ -10,6 +10,14 @@ export default defineConfig({
     watch: {
       usePolling: true,
       interval: 100
+    },
+    // Allow requests from any origin for development
+    cors: true,
+    // Add allowed hosts for proxy access
+    allowedHosts: ["feaviewer", "develop.feacivil.cloud", "feacivil.cloud", "localhost"],
+    // Add allowed origins for proxy access
+    hmr: {
+      clientPort: 4600
     }
   },
   base: "./",
