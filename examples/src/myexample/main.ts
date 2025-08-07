@@ -152,11 +152,11 @@ tables.set("surfaceProps", {
   data: surfacePropsData,
 });
 const loadsData = van.state([
-  [2, 0, 0, -100, 0, 10, 0], // Point-Id: 2, Fx: 0, Fy: 0, Fz: -100N, Mx: 0, My: 0, Mz: 0
-  [4, 0, 0, 1, 0, 0, 0], // Point-Id: 2, Fx: 0, Fy: 0, Fz: -100N, Mx: 0, My: 0, Mz: 0
-  [7, 0, 0, -300, 0, 0, 0], // Point-Id: 7, Fx: 0, Fy: 0, Fz: -1000N, Mx: 0, My: 0, Mz: 0
-  [9, 1000, 500, 0, 0, 0], // Point-Id: 7, Fx: 0, Fy: 0, Fz: -1000N, Mx: 0, My: 0, Mz: 0
-  [14, 0, 0, -200, 0, 0, 0], // Point-Id: 8, Fx: 0, Fy: 0, Fz: -1000N, Mx: 0, My: 0, Mz: 0
+  [2, 0, 0, -30, 0, 1, 0], // Point-Id: 2, Fx: 0, Fy: 0, Fz: -10N, Mx: 0, My: 0, Mz: 0
+  [4, 0, 0, 1, 0, 0, 0], // Point-Id: 2, Fx: 0, Fy: 0, Fz: -10N, Mx: 0, My: 0, Mz: 0
+  [7, 0, 0, -30, 0, 0, 0], // Point-Id: 7, Fx: 0, Fy: 0, Fz: -30N, Mx: 0, My: 0, Mz: 0
+  [9, 1000, 50, 0, 0, 0], // Point-Id: 7, Fx: 0, Fy: 0, Fz: -30N, Mx: 0, My: 0, Mz: 0
+  [14, 0, 0, -60, 0, 0, 0], // Point-Id: 8, Fx: 0, Fy: 0, Fz: -20N, Mx: 0, My: 0, Mz: 0
 ]);
 
 tables.set("loads", {
@@ -526,7 +526,7 @@ document.body.append(
       nodes: true,
       supports: true,
       loads: true,
-      deformedShape: false,
+      deformedShape: true,
       structuralPoints: true,
     },
     objects3D: objects3D,
