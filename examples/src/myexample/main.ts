@@ -32,9 +32,9 @@ const allPoints = van.state([
   [10, 10, 0, null, null, null, null, null, null], // 13 - fixed
 ]);
 const elementConnectivity = van.state([
-  [1, 2],
-  [2, 3],
-  [3, 4],
+  [1, 2, 1, 1],
+  [2, 3, 1, 1],
+  [3, 4, 2, 1],
 ]);
 const division = 5;
 const elements: State<Element[]> = van.state([]);
@@ -89,7 +89,7 @@ tables.set("members", {
   ],
   data: elementConnectivity,
 });
-const surfacePolygon = van.state([[5, 6, 7, 9, 10, 8], [11, 12, 13, 14]]);
+const surfacePolygon = van.state([[5, 6, 7, 9, 10, 8, 1], [11, 12, 13, 14, 2]]);
 tables.set("surface", {
   text: "Surface",
   fields: [
@@ -99,12 +99,58 @@ tables.set("surface", {
     { field: "D", text: "Point-4", editable: { type: "int" } },
     { field: "E", text: "Point-5", editable: { type: "int" } },
     { field: "F", text: "Point-6", editable: { type: "int" } },
-    { field: "G", text: "Thickness [m]", editable: { type: "int" } },
-    { field: "H", text: "Material-Id", editable: { type: "int" } },
+    { field: "G", text: "Surf-Id", editable: { type: "int" } },
   ],
   data: surfacePolygon,
 });
 
+const materialsData = van.state([
+  [1, "Steel", 200000, 80000, 0.3], // Mat-Id: 1, Name: Steel, E: 200 GPa, G: 80 GPa, ν: 0.3
+  [2, "Concrete", 30000, 12500, 0.2], // Mat-Id: 2, Name: Concrete, E: 30 GPa, G: 12.5 GPa, ν: 0.2
+]);
+tables.set("materials", {
+  text: "Materials",
+  fields: [
+    { field: "A", text: "Mat-Id", editable: { type: "int" } },
+    { field: "B", text: "Name", editable: { type: "string" } },
+    { field: "C", text: "Elasticity [MPa]", editable: { type: "float" } },
+    { field: "D", text: "Shear Modulus [MPa]", editable: { type: "float" } },
+    { field: "E", text: "Poisson Ratio", editable: { type: "float" } },
+  ],
+  data: materialsData,
+});
+
+const sectionsData = van.state([
+  [1, "IPE200", 0.0028, 0.0001, 0.00002, 0.000002], // Sec-Id: 1, Name: IPE200, Area: 28 cm², Iz: 1943 cm⁴, Iy: 142 cm⁴, J: 4.3 cm⁴
+  [2, "HEB240", 0.0106, 0.0011, 0.000089, 0.000032], // Sec-Id: 2, Name: HEB240, Area: 106 cm², Iz: 11259 cm⁴, Iy: 3923 cm⁴, J: 32.5 cm⁴
+]);
+tables.set("sections", {
+  text: "Sections",
+  fields: [
+    { field: "A", text: "Sec-Id", editable: { type: "int" } },
+    { field: "B", text: "Name", editable: { type: "string" } },
+    { field: "C", text: "Area [m²]", editable: { type: "float" } },
+    { field: "D", text: "Iz [m⁴]", editable: { type: "float" } },
+    { field: "E", text: "Iy [m⁴]", editable: { type: "float" } },
+    { field: "F", text: "J [m⁴]", editable: { type: "float" } },
+  ],
+  data: sectionsData,
+});
+
+const surfacePropsData = van.state([
+  [1, "Slab", 0.2, 2], // Surf-Id: 1, Name: Slab, Thickness: 0.2m, Mat-Id: 2
+  [2, "Wall", 0.25, 2], // Surf-Id: 2, Name: Wall, Thickness: 0.25m, Mat-Id: 2
+]);
+tables.set("surfaceProps", {
+  text: "Surface Props",
+  fields: [
+    { field: "A", text: "Surf-Id", editable: { type: "int" } },
+    { field: "B", text: "Name", editable: { type: "string" } },
+    { field: "C", text: "Thickness [m]", editable: { type: "float" } },
+    { field: "D", text: "Mat-Id", editable: { type: "int" } },
+  ],
+  data: surfacePropsData,
+});
 const loadsData = van.state([
   [2, 0, 0, -100, 0, 10, 0], // Point-Id: 2, Fx: 0, Fy: 0, Fz: -100N, Mx: 0, My: 0, Mz: 0
   [4, 0, 0, 1, 0, 0, 0], // Point-Id: 2, Fx: 0, Fy: 0, Fz: -100N, Mx: 0, My: 0, Mz: 0
@@ -112,6 +158,7 @@ const loadsData = van.state([
   [9, 1000, 500, 0, 0, 0], // Point-Id: 7, Fx: 0, Fy: 0, Fz: -1000N, Mx: 0, My: 0, Mz: 0
   [14, 0, 0, -200, 0, 0, 0], // Point-Id: 8, Fx: 0, Fy: 0, Fz: -1000N, Mx: 0, My: 0, Mz: 0
 ]);
+
 tables.set("loads", {
   text: "Loads",
   fields: [
@@ -202,7 +249,7 @@ van.derive(() => {
   let surfaceNodes: Node[] = [];
   let surfaceElements: Element[] = [];
   for (const polygon of surfacePolygon.val) {
-    const cleanIds = polygon.filter((id) => typeof id === "number" && !isNaN(id));
+    const cleanIds = polygon.slice(0, -1).filter((id) => typeof id === "number" && !isNaN(id)); // Exclude last element (surface ID)
     const indices = cleanIds.map((i) => i - 1);
     const usedPoints: Node[] = indices.map((i) => [points[i][0] as number, points[i][1] as number, points[i][2] as number]).filter(point => point[0] !== undefined);
     if (usedPoints.length >= 3) {
@@ -292,10 +339,24 @@ van.derive(() => {
     }
   }
 
-  // Material properties for all elements (following 3d-structure example)
-  const elasticities = new Map(elems.map((_, i) => [i, 200000])); // 200 GPa steel
+  // Create lookup maps from table data
+  const materialsMap = new Map();
+  materialsData.val.forEach(([matId, name, elasticity, shearModulus, poissonRatio]) => {
+    materialsMap.set(matId, { name, elasticity, shearModulus, poissonRatio });
+  });
   
-  // Separate properties for beam elements vs surface elements
+  const sectionsMap = new Map();
+  sectionsData.val.forEach(([secId, name, area, momentZ, momentY, torsional]) => {
+    sectionsMap.set(secId, { name, area, momentZ, momentY, torsional });
+  });
+  
+  const surfacePropsMap = new Map();
+  surfacePropsData.val.forEach(([surfId, name, thickness, matId]) => {
+    surfacePropsMap.set(surfId, { name, thickness, matId });
+  });
+  
+  // Initialize element property maps
+  const elasticities = new Map();
   const areas = new Map();
   const shearModuli = new Map();
   const torsionalConstants = new Map();
@@ -304,21 +365,74 @@ van.derive(() => {
   const thicknesses = new Map();
   const poissonsRatios = new Map();
   
-  // Apply beam properties only to beam elements
+  // Apply beam properties from tables
   const numBeamElements = beamElements.val.length;
+  const connectivity = elementConnectivity.val;
+  
   for (let i = 0; i < numBeamElements; i++) {
-    areas.set(i, 0.01); // 100 cm²
-    shearModuli.set(i, 80000); // 80 GPa
-    torsionalConstants.set(i, 0.0001);
-    momentsOfInertiaY.set(i, 0.0001);
-    momentsOfInertiaZ.set(i, 0.0001);
+    // Get section and material IDs from connectivity table
+    const beamConnectivityIndex = Math.floor(i / division); // Map beam element to connectivity row
+    if (beamConnectivityIndex < connectivity.length) {
+      const [, , sectionId, materialId] = connectivity[beamConnectivityIndex];
+      
+      // Get material properties
+      const material = materialsMap.get(materialId);
+      if (material) {
+        elasticities.set(i, material.elasticity);
+        shearModuli.set(i, material.shearModulus);
+      }
+      
+      // Get section properties
+      const section = sectionsMap.get(sectionId);
+      if (section) {
+        areas.set(i, section.area);
+        momentsOfInertiaZ.set(i, section.momentZ);
+        momentsOfInertiaY.set(i, section.momentY);
+        torsionalConstants.set(i, section.torsional);
+      }
+    }
   }
   
-  // Apply surface/shell properties only to surface elements
-  for (let i = numBeamElements; i < elems.length; i++) {
-    thicknesses.set(i, 0.2); // 20 cm thickness
-    poissonsRatios.set(i, 0.3); // Concrete
-    shearModuli.set(i, 80000); // 80 GPa (needed for shells)
+  // Apply surface/shell properties from tables
+  const surfacePolygons = surfacePolygon.val;
+  let surfaceElementIndex = numBeamElements;
+  
+  for (let polyIndex = 0; polyIndex < surfacePolygons.length; polyIndex++) {
+    const polygon = surfacePolygons[polyIndex];
+    const surfaceId = polygon[polygon.length - 1]; // Last element is surface ID
+    
+    // Get surface properties
+    const surfaceProp = surfacePropsMap.get(surfaceId);
+    if (surfaceProp) {
+      const material = materialsMap.get(surfaceProp.matId);
+      
+      // Count surface elements for this polygon
+      const cleanIds = polygon.slice(0, -1).filter((id) => typeof id === "number" && !isNaN(id));
+      const indices = cleanIds.map((i) => i - 1);
+      const usedPoints = indices.map((i) => [allPoints.val[i][0] as number, allPoints.val[i][1] as number, allPoints.val[i][2] as number]).filter(point => point[0] !== undefined);
+      
+      if (usedPoints.length >= 3) {
+        const surfaceMesh = getMesh({
+          points: usedPoints,
+          polygon: [...Array(usedPoints.length).keys()],
+        });
+        
+        // Apply properties to all elements in this surface
+        for (let j = 0; j < surfaceMesh.elements.length; j++) {
+          const elemIndex = surfaceElementIndex + j;
+          
+          if (material) {
+            elasticities.set(elemIndex, material.elasticity);
+            shearModuli.set(elemIndex, material.shearModulus);
+            poissonsRatios.set(elemIndex, material.poissonRatio);
+          }
+          
+          thicknesses.set(elemIndex, surfaceProp.thickness);
+        }
+        
+        surfaceElementIndex += surfaceMesh.elements.length;
+      }
+    }
   }
 
   const nodeInputs: NodeInputs = { supports, loads };
@@ -412,7 +526,7 @@ document.body.append(
       nodes: true,
       supports: true,
       loads: true,
-      deformedShape: true,
+      deformedShape: false,
       structuralPoints: true,
     },
     objects3D: objects3D,
