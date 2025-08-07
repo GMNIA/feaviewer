@@ -29,15 +29,12 @@ const allPoints = van.state([
   [10, 5, 0, 0, 0, 0, 0, 0, 0], // 10 - fixed
   [15, 5, 0, 0, 0, 0, 0, 0, 0], // 11 - fixed
   [15, 10, 0, 0, 0, 0, 0, 0, 0], // 12 - fixed
-  [10, 10, 0, 0, 0, 0, 0, 0, 0], // 13 - fixed
-  [12, 12, 0, null, null, null, null, null, null], // 14 - free
+  [10, 10, 0, null, null, null, null, null, null], // 13 - fixed
 ]);
 const elementConnectivity = van.state([
   [1, 2],
   [2, 3],
   [3, 4],
-  [13, 15],
-  [14, 15],
 ]);
 const division = 5;
 const elements: State<Element[]> = van.state([]);
@@ -106,6 +103,27 @@ tables.set("surface", {
     { field: "H", text: "Material-Id", editable: { type: "int" } },
   ],
   data: surfacePolygon,
+});
+
+const loadsData = van.state([
+  [2, 0, 0, -100, 0, 10, 0], // Point-Id: 2, Fx: 0, Fy: 0, Fz: -100N, Mx: 0, My: 0, Mz: 0
+  [4, 0, 0, 1, 0, 0, 0], // Point-Id: 2, Fx: 0, Fy: 0, Fz: -100N, Mx: 0, My: 0, Mz: 0
+  [7, 0, 0, -300, 0, 0, 0], // Point-Id: 7, Fx: 0, Fy: 0, Fz: -1000N, Mx: 0, My: 0, Mz: 0
+  [9, 1000, 500, 0, 0, 0], // Point-Id: 7, Fx: 0, Fy: 0, Fz: -1000N, Mx: 0, My: 0, Mz: 0
+  [14, 0, 0, -200, 0, 0, 0], // Point-Id: 8, Fx: 0, Fy: 0, Fz: -1000N, Mx: 0, My: 0, Mz: 0
+]);
+tables.set("loads", {
+  text: "Loads",
+  fields: [
+    { field: "A", text: "Point-Id", editable: { type: "int" } },
+    { field: "B", text: "Fx [N]", editable: { type: "float" } },
+    { field: "C", text: "Fy [N]", editable: { type: "float" } },
+    { field: "D", text: "Fz [N]", editable: { type: "float" } },
+    { field: "E", text: "Mx [N⋅m]", editable: { type: "float" } },
+    { field: "F", text: "My [N⋅m]", editable: { type: "float" } },
+    { field: "G", text: "Mz [N⋅m]", editable: { type: "float" } },
+  ],
+  data: loadsData,
 });
 
 // --- Mesh generation ---
@@ -256,21 +274,52 @@ van.derive(() => {
   // No loads for now
   const loads = new Map<number, number[]>();
   
-  // Add a sample load on a free node (point 1 which is structural point index 0, mapped to FEM node)
-  const sampleLoadNodeIndex = structuralToNode.get(1); // Point 1 (index 0) 
-  if (sampleLoadNodeIndex !== undefined) {
-    loads.set(sampleLoadNodeIndex, [0, 0, -100, 0, 0, 0]); // 100N downward load
+  // Apply loads from the loads table
+  const loadDefinitions = loadsData.val;
+  for (const loadDef of loadDefinitions) {
+    const pointId = loadDef[0] as number;
+    const fx = (loadDef[1] as number) || 0;
+    const fy = (loadDef[2] as number) || 0;
+    const fz = (loadDef[3] as number) || 0;
+    const mx = (loadDef[4] as number) || 0;
+    const my = (loadDef[5] as number) || 0;
+    const mz = (loadDef[6] as number) || 0;
+    
+    // Get the FEM node index for this structural point
+    const femNodeIndex = structuralToNode.get(pointId - 1); // Convert 1-based point ID to 0-based index
+    if (femNodeIndex !== undefined) {
+      loads.set(femNodeIndex, [fx, fy, fz, mx, my, mz]);
+    }
   }
 
   // Material properties for all elements (following 3d-structure example)
   const elasticities = new Map(elems.map((_, i) => [i, 200000])); // 200 GPa steel
-  const areas = new Map(elems.map((_, i) => [i, 0.01])); // 100 cm²
   
-  // Additional properties for beam elements (following 1d-mesh example)
-  const shearModuli = new Map(elems.map((_, i) => [i, 80000])); // 80 GPa
-  const torsionalConstants = new Map(elems.map((_, i) => [i, 0.0001]));
-  const momentsOfInertiaY = new Map(elems.map((_, i) => [i, 0.0001]));
-  const momentsOfInertiaZ = new Map(elems.map((_, i) => [i, 0.0001]));
+  // Separate properties for beam elements vs surface elements
+  const areas = new Map();
+  const shearModuli = new Map();
+  const torsionalConstants = new Map();
+  const momentsOfInertiaY = new Map();
+  const momentsOfInertiaZ = new Map();
+  const thicknesses = new Map();
+  const poissonsRatios = new Map();
+  
+  // Apply beam properties only to beam elements
+  const numBeamElements = beamElements.val.length;
+  for (let i = 0; i < numBeamElements; i++) {
+    areas.set(i, 0.01); // 100 cm²
+    shearModuli.set(i, 80000); // 80 GPa
+    torsionalConstants.set(i, 0.0001);
+    momentsOfInertiaY.set(i, 0.0001);
+    momentsOfInertiaZ.set(i, 0.0001);
+  }
+  
+  // Apply surface/shell properties only to surface elements
+  for (let i = numBeamElements; i < elems.length; i++) {
+    thicknesses.set(i, 0.2); // 20 cm thickness
+    poissonsRatios.set(i, 0.3); // Concrete
+    shearModuli.set(i, 80000); // 80 GPa (needed for shells)
+  }
 
   const nodeInputs: NodeInputs = { supports, loads };
   const elementInputs: ElementInputs = { 
@@ -279,7 +328,9 @@ van.derive(() => {
     shearModuli, 
     torsionalConstants, 
     momentsOfInertiaY, 
-    momentsOfInertiaZ 
+    momentsOfInertiaZ,
+    thicknesses,
+    poissonsRatios
   };
 
   // Perform actual FEM calculation
