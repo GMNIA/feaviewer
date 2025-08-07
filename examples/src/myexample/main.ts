@@ -497,7 +497,7 @@ document.body.append(
   getToolbar({
     clickedButton,
     buttons: ["Model data"],
-    sourceCode: "awatif+code_aster",
+    sourceCode: "https://github.com/GMNIA",
     author: "https://www.linkedin.com/in/andrea-toffolon-464ab556/",
   }),
   getDialog({

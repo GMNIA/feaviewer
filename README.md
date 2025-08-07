@@ -1,11 +1,11 @@
-Awatif.co helps you build parametric structural engineering apps that run on the web or offline, featuring real-time FEM analysis and design. 
+FEAViewer helps you build parametric structural engineering apps that run on the web or offline, featuring real-time FEM analysis and design. 
 
 - For more information, check our website: https://awatif.co/
 - To understand the vision, watch this video: https://www.youtube.com/watch?v=QkoFJGfD7rc
 - To understand the architecture, watch this video: https://www.youtube.com/watch?v=4NdFQGouIjU
 
 ## Getting Started
-To get started with Awatif, follow these steps:
+To get started with FEAViewer, follow these steps:
 ```bash
 git clone https://github.com/madil4/awatif.git
 cd awatif
